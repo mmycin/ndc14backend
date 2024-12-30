@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,14 @@ func init() {
 func main() {
 	router := gin.Default()
 	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "API Connected"})
+		c.JSON(http.StatusOK, gin.H{"message": "Server Connected. Now you can start using the API form /api/v2 route"})
+	})
+
+	router.GET("/api/v2", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "Connected to the API. It was created by Tahcin Ul Karim (Mycin) - 12514013"})
+	})
+	router.GET("/api/", func(c *gin.Context) {
+		http.Redirect(c.Writer, c.Request, "/api/v2", http.StatusMovedPermanently)
 	})
 
 	// Configure CORS
