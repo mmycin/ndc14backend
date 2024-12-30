@@ -3,6 +3,7 @@ module github.com/mmycin/ndc14
 go 1.23.0
 
 require (
+	github.com/TwiN/go-away v1.6.14
 	github.com/gin-contrib/cors v1.7.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/stretchr/testify v1.10.0
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	github.com/TwiN/go-away v1.6.14 // indirect
 	github.com/bytedance/sonic v1.12.6 // indirect
 	github.com/bytedance/sonic/loader v0.2.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect

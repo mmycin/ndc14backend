@@ -4,12 +4,12 @@ import "gorm.io/gorm"
 
 type User struct {
 	gorm.Model
-	FullName string `json:"fullName"`
-	Username string `json:"username"`
-	Password string `json:"-"`
-	Email    string `json:"email" gorm:"unique"`
-	Roll     string `json:"roll" gorm:"unique"`
-	Batch    int    `json:"batch"`
-	FBLink   string `json:"fbLink"`
-	IsAdmin  bool   `json:"isAdmin" gorm:"default:false"`
+	FullName string `json:"fullName" gorm:"not null"`
+	Username string `json:"username" gorm:"not null"`
+	Password string `json:"-" gorm:"not null"`
+	Email    string `json:"email" gorm:"unique;not null"`
+	Roll     string `json:"roll" gorm:"unique;not null"`
+	Batch    int    `json:"batch" gorm:"not null"`
+	FBLink   string `json:"fbLink" gorm:"not null"`
+	IsAdmin  bool   `json:"isAdmin" gorm:"default:false;not null"`
 }

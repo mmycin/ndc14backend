@@ -4,8 +4,8 @@ import "gorm.io/gorm"
 
 type Contact struct {
 	gorm.Model `json:"-"`
-	Name       string `json:"name"`
-	Email      string `gorm:"unique" json:"email"`
-	Roll       string `json:"roll"`
-	Message    string `json:"message"`
+	Name       string `json:"name" gorm:"not null"`
+	Email      string `json:"email" gorm:"not null"`
+	Roll       string `json:"roll" gorm:"not null"`
+	Message    string `json:"message" gorm:"not null"`
 }
