@@ -27,6 +27,18 @@ serve:
 	@echo "Starting server..."
 	@go run cmd/main.go
 
+commit:
+	@if "$(filter-out commit,$(MAKECMDGOALS))" == "" ( \
+		echo Please provide a commit message! && exit /b 1 \
+	) else ( \
+		git add . && git commit -m "$(filter-out commit,$(MAKECMDGOALS))" \
+	)
+
+%:
+	@:
+
+
+
 test:
 	@cls
 	@go test -v ./tests

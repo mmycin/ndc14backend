@@ -14,13 +14,13 @@ import (
 
 func SignUp(c *gin.Context) {
 	var Body struct {
+		FullName string `json:"fullName"`
 		Username string `json:"username"`
 		Password string `json:"-"`
 		Email    string `json:"email" gorm:"unique"`
 		Roll     string `json:"roll" gorm:"unique"`
 		Batch    int    `json:"batch"`
 		FBLink   string `json:"fbLink"`
-		IsAdmin  bool   `json:"isAdmin" gorm:"default:false"`
 	}
 
 	if err := c.ShouldBindJSON(&Body); err != nil {
@@ -41,6 +41,7 @@ func SignUp(c *gin.Context) {
 
 	// Create user
 	user := models.User{
+		FullName: Body.FullName,
 		Username: Body.Username,
 		Email:    Body.Email,
 		Password: string(hash),
@@ -65,7 +66,8 @@ func SignUp(c *gin.Context) {
 
 func Login(c *gin.Context) {
 	var Body struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
+		Roll     string `json:"roll"`
 		Password string `json:"-"`
 	}
 
@@ -77,10 +79,10 @@ func Login(c *gin.Context) {
 	}
 
 	var user models.User
-	config.DB.First(&user, "email = ?", Body.Email)
+	config.DB.First(&user, "roll = ?", Body.Roll)
 	if user.ID == 0 {
 		c.JSON(http.StatusBadGateway, gin.H{
-			"error": "Invalid Email",
+			"error": "Invalid Roll",
 		})
 		return
 	}

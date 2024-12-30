@@ -31,6 +31,6 @@ func main() {
 	routes.SetupContactRoutes(api.Group("/contacts"))
 
 	// Start server
-	libs.Success("Starting server at" + os.Getenv("HOST") + ":" + os.Getenv("PORT"))
+	libs.Success("Starting server at " + os.Getenv("HOST") + ":" + os.Getenv("PORT"))
 	router.Run(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
 }

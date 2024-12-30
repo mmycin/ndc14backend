@@ -14,4 +14,5 @@ func SetupUserRoutes(group *gin.RouterGroup) {
 	group.POST("/signup", controllers.SignUp)
 	group.POST("/login", controllers.Login)
 	group.GET("/validate", middlewares.RequireAuth, controllers.Validate)
+	group.GET("/logout", controllers.Logout)
 }
