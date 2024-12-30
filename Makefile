@@ -12,6 +12,9 @@ watch:
 	@cls
 	@air cmd/main.go
 
+update:
+	@go get -u ./...
+
 format:
 	@go fmt ./...
 	@echo "Code formatted successfully"
