@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/mmycin/ndc14/config"
+	"github.com/mmycin/ndc14/libs"
 	"github.com/mmycin/ndc14/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,6 +27,22 @@ func SignUp(c *gin.Context) {
 	if err := c.ShouldBindJSON(&Body); err != nil {
 		c.JSON(400, gin.H{
 			"Error": "Failed to read body",
+		})
+		return
+	}
+
+	// Validate email format
+	if !libs.IsValidEmail(Body.Email) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid email format",
+		})
+		return
+	}
+
+	// Validate roll format
+	if !libs.IsValidRoll(Body.Roll) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid roll format. Must follow pattern: 1(2|3)x14xxx where x is any digit and last 3 digits between 001-150",
 		})
 		return
 	}
@@ -194,12 +211,24 @@ func UpdateUser(c *gin.Context) {
 			existingUser.Username = Body.Username
 		}
 		if Body.Email != "" {
+			if !libs.IsValidEmail(Body.Email) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid email format",
+				})
+				return
+			}
 			existingUser.Email = Body.Email
 		}
 		if Body.FBLink != "" {
 			existingUser.FBLink = Body.FBLink
 		}
 		if Body.Roll != "" {
+			if !libs.IsValidRoll(Body.Roll) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid roll format. Must follow pattern: 1(2|3)x14xxx where x is any digit and last 3 digits between 001-150",
+				})
+				return
+			}
 			existingUser.Roll = Body.Roll
 		}
 		if Body.Batch != 0 {
@@ -273,5 +302,53 @@ func GetUsers(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"data": users,
+	})
+}
+
+func GetUserByID(c *gin.Context) {
+	var user models.User
+	id := c.Param("id")
+
+	if err := config.DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": user,
+	})
+}
+
+func GetUserByUsername(c *gin.Context) {
+	var user models.User
+	username := c.Param("username")
+
+	if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": user,
+	})
+}
+
+func GetUserByRoll(c *gin.Context) {
+	var user models.User
+	roll := c.Param("roll")
+
+	if err := config.DB.Where("roll = ?", roll).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": user,
 	})
 }

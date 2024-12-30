@@ -9,6 +9,9 @@ import (
 
 func SetupUserRoutes(group *gin.RouterGroup) {
 	group.GET("/", controllers.GetUsers)
+	group.GET("/id/:id", controllers.GetUserByID)
+	group.GET("/username/:username", controllers.GetUserByUsername)
+	group.GET("/roll/:roll", controllers.GetUserByRoll)
 
 	group.POST("/signup", controllers.SignUp)
 	group.POST("/login", controllers.Login)
