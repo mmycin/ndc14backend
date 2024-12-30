@@ -1,3 +1,4 @@
+// user.route.go
 package routes
 
 import (
@@ -7,12 +8,13 @@ import (
 )
 
 func SetupUserRoutes(group *gin.RouterGroup) {
-	group.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "User route"})
-	})
+	group.GET("/", controllers.GetUsers)
 
 	group.POST("/signup", controllers.SignUp)
 	group.POST("/login", controllers.Login)
 	group.GET("/validate", middlewares.RequireAuth, controllers.Validate)
 	group.GET("/logout", controllers.Logout)
+
+	group.PUT("/update", middlewares.RequireAuth, controllers.UpdateUser)
+	group.DELETE("/delete", middlewares.RequireAuth, controllers.DeleteUser)
 }
