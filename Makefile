@@ -17,7 +17,7 @@ update:
 
 format:
 	@go fmt ./...
-	@echo "Code formatted successfully"
+	@echo Code formatted successfully
 
 clean:
 	@cls	
@@ -27,7 +27,7 @@ clean:
 
 serve:
 	@cls
-	@echo "Starting server..."
+	@echo Starting server...
 	@go run cmd/main.go
 
 commit:

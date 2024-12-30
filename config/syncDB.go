@@ -1,32 +1,27 @@
 package config
 
 import (
-	"sync"
-
 	"github.com/mmycin/ndc14/libs"
 	"github.com/mmycin/ndc14/models"
 )
 
 func SyncDatabase() {
 	libs.TimeElapsed(func() {
-		var wg sync.WaitGroup
-
-		// List of models to migrate
+		// Define models in order of dependencies
 		modelsToMigrate := []interface{}{
 			&models.User{},
 			&models.Notice{},
+			&models.File{},
 			&models.Contact{},
 		}
-		// Start a goroutine for each model migration
+
+		// Migrate sequentially to ensure proper foreign key creation
 		for _, model := range modelsToMigrate {
-			wg.Add(1)
-			go func(m interface{}) {
-				defer wg.Done()
-				DB.AutoMigrate(m)
-			}(model)
+			if err := DB.AutoMigrate(model); err != nil {
+				libs.Error("Failed to migrate model: " + err.Error())
+			}
 		}
-		// Wait for all goroutines to finish
-		wg.Wait()
+
 		libs.Success("Migrated models")
 	})
 }

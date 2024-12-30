@@ -2,11 +2,10 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/mmycin/ndc14/controllers"
 	_ "github.com/mmycin/ndc14/controllers"
 )
 
 func SetupNoticeRoutes(group *gin.RouterGroup) {
-	group.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Notice route"})
-	})
+	group.GET("/", controllers.GetNotices)
 }
