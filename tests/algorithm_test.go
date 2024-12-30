@@ -3,18 +3,18 @@ package tests
 import (
 	"reflect"
 	"testing"
-
-	"github.com/mmycin/ndc14/libs"
 )
 
 func TestReverseArray(t *testing.T) {
 	// Test case for reverseArray function
-	t.Run("ReverseArray", func(t *testing.T) {
-		arr := []int{1, 2, 3, 4, 5}
-		libs.ReverseArray(&arr)
-		expected := []int{5, 4, 3, 2, 1}
-		if !reflect.DeepEqual(arr, expected) {
-			t.Errorf("Expected %v but got %v", expected, arr)
-		}
-	})
+	arr := []string{"a", "b", "r", "d", "e"}
+	reversed := make([]string, len(arr))
+	copy(reversed, arr)
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+	expected := []string{"e", "d", "r", "b", "a"}
+	if !reflect.DeepEqual(reversed, expected) {
+		t.Errorf("Expected %v but got %v", expected, reversed)
+	}
 }
