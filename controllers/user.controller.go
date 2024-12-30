@@ -30,6 +30,31 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
+	// Check if user with same email or roll exists (including soft-deleted)
+	var existingUser models.User
+
+	// Check email
+	if err := config.DB.Unscoped().Where("email = ?", Body.Email).First(&existingUser).Error; err == nil {
+		// User exists - check if soft deleted
+		if existingUser.DeletedAt.Time.IsZero() {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Email already registered",
+			})
+			return
+		}
+	}
+
+	// Check roll
+	if err := config.DB.Unscoped().Where("roll = ?", Body.Roll).First(&existingUser).Error; err == nil {
+		// User exists - check if soft deleted
+		if existingUser.DeletedAt.Time.IsZero() {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Roll number already registered",
+			})
+			return
+		}
+	}
+
 	// Hash password
 	hash, err := bcrypt.GenerateFromPassword([]byte(Body.Password), 10)
 	if err != nil {
