@@ -37,8 +37,6 @@ commit:
 %:
 	@:
 
-
-
 test:
 	@cls
 	@go test -v ./tests
