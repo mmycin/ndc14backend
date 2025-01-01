@@ -82,7 +82,19 @@ func SignUp(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User created successfully",
-		"data":    user,
+		"data":    gin.H{
+			"id":   user.ID,
+			"roll": user.Roll,
+			"email": user.Email,
+			"fbLink": user.FBLink,
+			"isAdmin": user.IsAdmin,
+			"fullName": user.FullName,
+			"username": user.Username,
+			"batch": user.Batch,
+			"createdAt": user.CreatedAt,
+			"updatedAt": user.UpdatedAt,
+			"deletedAt": user.DeletedAt,
+		},
 	})
 }
 
