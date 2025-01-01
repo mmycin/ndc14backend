@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,13 +17,14 @@ import (
 
 func SignUp(c *gin.Context) {
 	var Body struct {
-		FullName string `json:"fullName"`
-		Username string `json:"username"`
-		Password string `json:"-"`
-		Email    string `json:"email" gorm:"unique"`
-		Roll     string `json:"roll" gorm:"unique"`
-		Batch    int    `json:"batch"`
-		FBLink   string `json:"fbLink"`
+		FullName string `json:"fullName" gorm:"not null"`
+		Username string `json:"username" gorm:"not null"`
+		Password string `json:"password" gorm:"not null"`
+		Email    string `json:"email" gorm:"unique;not null"`
+		Roll     string `json:"roll" gorm:"unique;not null"`
+		Batch    int    `json:"batch" gorm:"not null"`
+		FBLink   string `json:"fbLink" gorm:"not null"`
+		IsAdmin  bool   `json:"isAdmin" gorm:"default:false;not null"`
 	}
 
 	if err := c.ShouldBindJSON(&Body); err != nil {
@@ -31,86 +34,63 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	// Validate email format
-	if !libs.IsValidEmail(Body.Email) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid email format",
+	// Trim any whitespace from password
+	// Body.Password = strings.TrimSpace(Body.Password)
+
+	if len(Body.Password) < 1 {
+		c.JSON(400, gin.H{
+			"error": "Password cannot be empty",
 		})
 		return
 	}
 
-	// Validate roll format
-	if !libs.IsValidRoll(Body.Roll) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid roll format. Must follow pattern: 1(2|3)x14xxx where x is any digit and last 3 digits between 001-150",
-		})
-		return
-	}
-
-	// Check if user with same email or roll exists (including soft-deleted)
-	var existingUser models.User
-
-	// Check email
-	if err := config.DB.Unscoped().Where("email = ?", Body.Email).First(&existingUser).Error; err == nil {
-		// User exists - check if soft deleted
-		if existingUser.DeletedAt.Time.IsZero() {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Email already registered",
-			})
-			return
-		}
-	}
-
-	// Check roll
-	if err := config.DB.Unscoped().Where("roll = ?", Body.Roll).First(&existingUser).Error; err == nil {
-		// User exists - check if soft deleted
-		if existingUser.DeletedAt.Time.IsZero() {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Roll number already registered",
-			})
-			return
-		}
-	}
-
-	// Hash password
-	hash, err := bcrypt.GenerateFromPassword([]byte(Body.Password), 10)
+	// Hash password with specific cost
+	hash, err := bcrypt.GenerateFromPassword([]byte(Body.Password), bcrypt.DefaultCost)
+	fmt.Println(hash)
 	if err != nil {
+		fmt.Printf("Password hashing error: %v\n", err)
 		c.JSON(400, gin.H{
 			"error": "Failed to hash password",
 		})
 		return
 	}
 
-	// Create user
+	// Create user with trimmed and properly hashed password
 	user := models.User{
 		FullName: Body.FullName,
 		Username: Body.Username,
 		Email:    Body.Email,
+		// Password: string(hash),
 		Password: string(hash),
 		Roll:     Body.Roll,
 		Batch:    Body.Batch,
 		FBLink:   Body.FBLink,
 		IsAdmin:  false,
 	}
+
 	result := config.DB.Create(&user)
 	if result.Error != nil {
+		fmt.Printf("Database error during user creation: %v\n", result.Error)
 		c.JSON(http.StatusBadGateway, gin.H{
 			"error": "Error creating User",
 		})
 		return
 	}
 
+	// Log success but don't expose hash in response
+	fmt.Printf("Successfully created user with roll: %s\n", user.Roll)
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "user created successfully",
+		"message": "User created successfully",
 		"data":    user,
 	})
 }
 
 func Login(c *gin.Context) {
 	var Body struct {
-		Username string `json:"username"`
-		Roll     string `json:"roll"`
-		Password string `json:"-"`
+		Username string `json:"username" gorm:"not null"`
+		Roll     string `json:"roll" gorm:"unique;not null"`
+		Password string `json:"password" gorm:"not null"`
 	}
 
 	if err := c.ShouldBindJSON(&Body); err != nil {
@@ -120,23 +100,35 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// Trim any whitespace from password
+	Body.Password = strings.TrimSpace(Body.Password)
+
 	var user models.User
-	config.DB.First(&user, "roll = ?", Body.Roll)
-	if user.ID == 0 {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": "Invalid Roll",
+	if err := config.DB.Where("roll = ?", Body.Roll).First(&user).Error; err != nil {
+		fmt.Printf("User lookup error for roll %s: %v\n", Body.Roll, err)
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid credentials",
 		})
 		return
 	}
 
+	// Add logging to check password lengths and content
+	fmt.Printf("Login attempt for roll: %s\n", Body.Roll)
+	fmt.Printf("Stored hash length: %d\n", len(user.Password))
+	fmt.Printf("Provided password length: %d\n", len(Body.Password))
+
+	// Compare hashed password with the entered password
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(Body.Password))
+	// err := strings.Compare(Body.Password, user.Password)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": "Invalid Password, try again",
+		fmt.Printf("Password comparison error for roll %s: %v\n", Body.Roll, err)
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid password",
 		})
 		return
 	}
 
+	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
@@ -145,8 +137,7 @@ func Login(c *gin.Context) {
 	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
-			"status": "An error occured while creating the Token",
-			"error":  err,
+			"error": "Error creating token",
 		})
 		return
 	}
@@ -192,7 +183,7 @@ func UpdateUser(c *gin.Context) {
 		var Body struct {
 			FullName string `json:"fullName"`
 			Username string `json:"username"`
-			Password string `json:"-"`
+			Password string `json:"password"`
 			Email    string `json:"email" gorm:"unique"`
 			Roll     string `json:"roll" gorm:"unique"`
 			Batch    int    `json:"batch"`
