@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -69,6 +70,7 @@ func CreateNotice(c *gin.Context) {
 func UpdateNotice(c *gin.Context) {
 	noticeID := c.Param("id")
 	var notice models.Notice
+	var files []models.File
 
 	// Find the existing notice
 	if err := config.DB.First(&notice, noticeID).Error; err != nil {
@@ -78,7 +80,7 @@ func UpdateNotice(c *gin.Context) {
 		return
 	}
 
-	// Bind the updated data
+	// Bind the updated notice data
 	if err := c.ShouldBindJSON(&notice); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid input data",
@@ -86,7 +88,31 @@ func UpdateNotice(c *gin.Context) {
 		return
 	}
 
-	// Save the updates
+	// Check if there are files to update
+	if len(notice.Files) > 0 {
+		fmt.Println("More than zero files")
+
+		// Find the files associated with the notice
+		if err := config.DB.Where("notice_id = ?", notice.ID).Find(&files).Error; err != nil {
+			fmt.Println("Error fetching files:", err)
+		}
+		fmt.Println("Existing files:", files)
+
+		// Delete existing files associated with the notice
+		if err := config.DB.Where("notice_id = ?", notice.ID).Delete(&models.File{}).Error; err != nil {
+			fmt.Println("Error deleting files:", err)
+		}
+
+		// Only keep the last file from the updated notice.Files list
+		lastFile := notice.Files[len(notice.Files)-1]
+		fmt.Println("Last file to keep:", lastFile)
+
+		// Empty the files array and add only the last file
+		notice.Files = []models.File{lastFile}
+		fmt.Println("Updated files list:", notice.Files)
+	}
+
+	// Save the updates to the notice, including the files
 	if err := config.DB.Save(&notice).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update notice",
@@ -95,11 +121,13 @@ func UpdateNotice(c *gin.Context) {
 		return
 	}
 
+	// Return success response
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Notice updated successfully",
 		"data":    notice,
 	})
 }
+
 
 func DeleteNotice(c *gin.Context) {
 	noticeID := c.Param("id")
