@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/mmycin/ndc14/config"
-	"github.com/mmycin/ndc14/libs"
 	"github.com/mmycin/ndc14/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,6 +22,7 @@ func SignUp(c *gin.Context) {
 		Email    string `json:"email" gorm:"unique;not null"`
 		Roll     string `json:"roll" gorm:"unique;not null"`
 		Batch    int    `json:"batch" gorm:"not null"`
+		Phone    string `json:"phone" gorm:"not null"`
 		FBLink   string `json:"fbLink" gorm:"not null"`
 		IsAdmin  bool   `json:"isAdmin" gorm:"default:false;not null"`
 	}
@@ -64,8 +64,9 @@ func SignUp(c *gin.Context) {
 		Password: string(hash),
 		Roll:     Body.Roll,
 		Batch:    Body.Batch,
+		Phone:    Body.Phone,
 		FBLink:   Body.FBLink,
-		IsAdmin:  false,
+		IsAdmin:  Body.IsAdmin,
 	}
 
 	result := config.DB.Create(&user)
@@ -82,15 +83,16 @@ func SignUp(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User created successfully",
-		"data":    gin.H{
-			"id":   user.ID,
-			"roll": user.Roll,
-			"email": user.Email,
-			"fbLink": user.FBLink,
-			"isAdmin": user.IsAdmin,
-			"fullName": user.FullName,
-			"username": user.Username,
-			"batch": user.Batch,
+		"data": gin.H{
+			"id":        user.ID,
+			"roll":      user.Roll,
+			"email":     user.Email,
+			"fbLink":    user.FBLink,
+			"isAdmin":   user.IsAdmin,
+			"fullName":  user.FullName,
+			"username":  user.Username,
+			"batch":     user.Batch,
+			"phone":     user.Phone,
 			"createdAt": user.CreatedAt,
 			"updatedAt": user.UpdatedAt,
 			"deletedAt": user.DeletedAt,
@@ -181,120 +183,90 @@ func Logout(c *gin.Context) {
 }
 
 func UpdateUser(c *gin.Context) {
-	user, _ := c.Get("user")
+	id := c.Param("id")
 	var existingUser models.User
-	config.DB.First(&existingUser, "id = ?", user.(models.User).ID)
 
-	if existingUser.ID == 0 {
+	// Check if user exists
+	if err := config.DB.First(&existingUser, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	// Check if the user is admin or is trying to update their own account
-	if existingUser.IsAdmin || existingUser.ID == user.(models.User).ID {
-		var Body struct {
-			FullName string `json:"fullName"`
-			Username string `json:"username"`
-			Password string `json:"password"`
-			Email    string `json:"email" gorm:"unique"`
-			Roll     string `json:"roll" gorm:"unique"`
-			Batch    int    `json:"batch"`
-			FBLink   string `json:"fbLink"`
-		}
-
-		if err := c.ShouldBindJSON(&Body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-			return
-		}
-
-		if Body.FullName != "" {
-			existingUser.FullName = Body.FullName
-		}
-		if Body.Username != "" {
-			existingUser.Username = Body.Username
-		}
-		if Body.Email != "" {
-			if !libs.IsValidEmail(Body.Email) {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid email format",
-				})
-				return
-			}
-			existingUser.Email = Body.Email
-		}
-		if Body.FBLink != "" {
-			existingUser.FBLink = Body.FBLink
-		}
-		if Body.Roll != "" {
-			if !libs.IsValidRoll(Body.Roll) {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid roll format. Must follow pattern: 1(2|3)x14xxx where x is any digit and last 3 digits between 001-150",
-				})
-				return
-			}
-			existingUser.Roll = Body.Roll
-		}
-		if Body.Batch != 0 {
-			existingUser.Batch = Body.Batch
-		}
-		if Body.Password != "" {
-			hash, err := bcrypt.GenerateFromPassword([]byte(Body.Password), 10)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to hash password"})
-				return
-			}
-			existingUser.Password = string(hash)
-		}
-
-		config.DB.Save(&existingUser)
-		c.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "data": existingUser})
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "You can only update your own account"})
-	}
-}
-
-func DeleteUser(c *gin.Context) {
-	user, _ := c.Get("user")
-	var existingUser models.User
-	var Body struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Roll     string `json:"roll"`
-	}
-
-	if err := c.ShouldBindJSON(&Body); err != nil {
+	// Parse JSON payload
+	var updates models.User
+	if err := c.ShouldBindJSON(&updates); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	// Admin flow - can delete any user including themselves
-	if user.(models.User).IsAdmin {
-		if Body.Username != "" {
-			if result := config.DB.Delete(&existingUser, "username = ?", Body.Username); result.Error != nil || result.RowsAffected == 0 {
-				c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-				return
-			}
-		} else if Body.Email != "" {
-			if result := config.DB.Delete(&existingUser, "email = ?", Body.Email); result.Error != nil || result.RowsAffected == 0 {
-				c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-				return
-			}
-		} else if Body.Roll != "" {
-			if result := config.DB.Delete(&existingUser, "roll = ?", Body.Roll); result.Error != nil || result.RowsAffected == 0 {
-				c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-				return
-			}
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Please provide username, email, or roll to delete user"})
+	// Apply updates to fields manually (to avoid overwriting unwanted fields)
+	if updates.FullName != "" {
+		existingUser.FullName = updates.FullName
+	}
+	if updates.Username != "" {
+		existingUser.Username = updates.Username
+	}
+	if updates.Email != "" {
+		existingUser.Email = updates.Email
+	}
+	if updates.Roll != "" {
+		existingUser.Roll = updates.Roll
+	}
+	if updates.Batch != 0 {
+		existingUser.Batch = updates.Batch
+	}
+	if updates.FBLink != "" {
+		existingUser.FBLink = updates.FBLink
+	}
+	if updates.Phone != "" {
+		existingUser.Phone = updates.Phone
+	}
+	if updates.IsAdmin != existingUser.IsAdmin {
+		existingUser.IsAdmin = updates.IsAdmin
+	}
+
+	// Handle password update (hash it)
+	if updates.Password != "" {
+		// Hash the password before saving
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updates.Password), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+		existingUser.Password = string(hashedPassword)
+	}
+
+	// Update user in database
+	if err := config.DB.Save(&existingUser).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
 		return
 	}
 
-	// Regular user flow - can only delete their own account
-	config.DB.Delete(&existingUser, "id = ?", user.(models.User).ID)
-	c.JSON(http.StatusOK, gin.H{"message": "Your account has been deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User updated successfully",
+		"data":    existingUser,
+	})
+}
+
+func DeleteUser(c *gin.Context) {
+	// Get the user ID from the URL parameters
+	id := c.Param("id")
+	var existingUser models.User
+
+	// Retrieve the user from the database
+	if err := config.DB.Where("id = ?", id).First(&existingUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Proceed with deleting the user
+	if err := config.DB.Delete(&existingUser).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+
+	// Return success message
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
 
 func GetUsers(c *gin.Context) {

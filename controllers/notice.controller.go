@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mmycin/ndc14/config"
@@ -10,6 +11,7 @@ import (
 )
 
 func GetNotices(c *gin.Context) {
+
 	var notices []models.Notice
 
 	// Get all notices with their associated files, ordered by creation date (newest first)
@@ -33,31 +35,22 @@ func GetNotices(c *gin.Context) {
 }
 
 func CreateNotice(c *gin.Context) {
-	// Get the authenticated user
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
-		return
-	}
-
-	// Only admin users can create notices
-	if !user.(models.User).IsAdmin {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Only admin users can create notices",
-		})
-		return
-	}
-
 	var notice models.Notice
+
+	// Bind JSON input to the notice struct
 	if err := c.ShouldBindJSON(&notice); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid input data",
+			"error":   "Invalid input data",
+			"details": err.Error(),
 		})
 		return
 	}
 
+	// Set timestamps if your model requires them (optional)
+	currentTime := time.Now()
+	notice.CreatedAt = currentTime
+
+	// Save the notice to the database
 	if err := config.DB.Create(&notice).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to create notice",
@@ -66,6 +59,7 @@ func CreateNotice(c *gin.Context) {
 		return
 	}
 
+	// Return success response
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Notice created successfully",
 		"data":    notice,
@@ -73,23 +67,6 @@ func CreateNotice(c *gin.Context) {
 }
 
 func UpdateNotice(c *gin.Context) {
-	// Get the authenticated user
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
-		return
-	}
-
-	// Only admin users can update notices
-	if !user.(models.User).IsAdmin {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Only admin users can update notices",
-		})
-		return
-	}
-
 	noticeID := c.Param("id")
 	var notice models.Notice
 
@@ -125,23 +102,6 @@ func UpdateNotice(c *gin.Context) {
 }
 
 func DeleteNotice(c *gin.Context) {
-	// Get the authenticated user
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
-		return
-	}
-
-	// Only admin users can delete notices
-	if !user.(models.User).IsAdmin {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Only admin users can delete notices",
-		})
-		return
-	}
-
 	noticeID := c.Param("id")
 	var notice models.Notice
 

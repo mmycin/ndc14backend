@@ -86,23 +86,7 @@ func GetContact(c *gin.Context) {
 
 // DeleteContact requires authentication to delete a contact
 func DeleteContact(c *gin.Context) {
-	// Get the authenticated user
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
-		return
-	}
-
-	// Only admin users can delete contacts
-	if !user.(models.User).IsAdmin {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Only admin users can delete contacts",
-		})
-		return
-	}
-
+	// Get the authenticated user``
 	contactID := c.Param("id")
 	var contact models.Contact
 

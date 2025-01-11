@@ -18,6 +18,6 @@ func SetupUserRoutes(group *gin.RouterGroup) {
 	group.GET("/validate", middlewares.RequireAuth, controllers.Validate)
 	group.GET("/logout", controllers.Logout)
 
-	group.PUT("/update", middlewares.RequireAuth, controllers.UpdateUser)
-	group.DELETE("/delete", middlewares.RequireAuth, controllers.DeleteUser)
+	group.PUT("/update/:id", controllers.UpdateUser)
+	group.DELETE("/delete/:id", controllers.DeleteUser)
 }
